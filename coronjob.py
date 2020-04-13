@@ -21,10 +21,10 @@ def send_message(message):
     res = requests.get(telegram_bot_uri)
     print(res.text)
 
-def send_graph():
+def send_graph(caption):
     url = "https://api.telegram.org/bot{}/sendPhoto".format(telegram_bot_token)
     files = {'photo': open('graph.png', 'rb')}
-    data = {'chat_id' : telegram_channel_id}
+    data = {'chat_id' : telegram_channel_id, 'caption': caption}
     response = requests.post(url, files=files, data=data)
     print(response.status_code, response.reason, response.content)
 
@@ -69,7 +69,8 @@ def calculate_active_cases(cases, deaths, recoveries):
     return [c - d - r for (c, d, r) in zip(cases, deaths, recoveries)]
 
 def plot(values, dates):
-    plt.plot(values)
+    plt.plot_date(pd.to_datetime(dates), values, '-')
+    plt.gcf().autofmt_xdate()
     plt.savefig("graph.png")
 
 def create_message(values):
@@ -83,12 +84,9 @@ def main():
     current_date = dates.tail(1).item()
     values = calculate_active_cases(cases, deaths, recoveries)
 
-    send_message("Cases for {}".format(current_date))
     message = create_message(values)
-    send_message(message)
-
     plot(values, dates)
-    send_graph()
+    send_graph(f"Cases for {current_date}:\n"+message)
 
 if __name__ == '__main__':
     main()
