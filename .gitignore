@@ -1,3 +1,6 @@
+# Custom files at the bottom
+# (added with 'git status >> .gitignore')
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -127,3 +130,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+
+# Custom
+corona-cases.csv
+corona-deaths.csv
+corona-recoveries.csv
+graph.png
+telegram_token.py

@@ -2,6 +2,8 @@
 
 import requests
 import csv
+import matplotlib.pyplot as plt
+import pandas as pd
 
 from telegram_token import telegram_bot_token
 from telegram_token import telegram_channel_id
@@ -10,8 +12,8 @@ from telegram_token import telegram_channel_id
 # so much oprimizing potential but its easter and i am just scripting
 
 
-def send_message(msg):
 
+def send_message(message):
     telegram_bot_uri    = "https://api.telegram.org/bot" + telegram_bot_token
     telegram_bot_uri   += "/sendMessage?chat_id=" + telegram_channel_id
     telegram_bot_uri   += "&text=" + str(message)
@@ -19,39 +21,74 @@ def send_message(msg):
     res = requests.get(telegram_bot_uri)
     print(res.text)
 
-def get_data():
-    cases      = 0
-    deaths     = 0
-    recoveries = 0
+def send_graph():
+    url = "https://api.telegram.org/bot{}/sendPhoto".format(telegram_bot_token)
+    files = {'photo': open('graph.png', 'rb')}
+    data = {'chat_id' : telegram_channel_id}
+    response = requests.post(url, files=files, data=data)
+    print(response.status_code, response.reason, response.content)
 
-    for typ in ["cases", "deaths", "recoveries"]:
-        print("downloading... " + typ)
+def get_types():
+    return ["cases", "deaths", "recoveries"]
+def get_filename(typ):
+    return f"corona-{typ}.csv"
+def get_filenames():
+    return [get_filename(typ) for typ in get_types()]
 
-        url = "http://www.dkriesel.com/_media/corona-{}.csv".format(typ)
-
+def download_data():
+    for filename in get_filenames():
+        url = f"http://www.dkriesel.com/_media/{filename}"
         with requests.Session() as s:
             download = s.get(url)
             decoded_content = download.content.decode('utf-8')
-            cr = csv.reader(decoded_content.splitlines(), delimiter='\t')
-            rows = list(cr)
-            germany_index = rows[0].index("Germany")
-            print("germany_index ", str(germany_index))
+            with open(filename, "w") as f:
+                f.write(decoded_content)
 
+def get_data():
+    cases = []
+    deaths = []
+    recoveries = []
+    dates = []
+    for typ in get_types():
+        filename = get_filename(typ)
+        cols = ["Date", "Germany"]
+        df = pd.read_csv(filename, delimiter='\t', encoding='utf-8', usecols=cols)
+        file_dates = df['Date']
+        values = df['Germany']
+        if typ == 'cases':
+            cases = values
+        elif typ == 'deaths':
+            deaths = values
+        elif typ == "recoveries":
+            recoveries = values
+        if len(dates) < len(file_dates):
+            dates = file_dates
+    return (cases, deaths, recoveries, dates)
 
-            data = rows[-1][germany_index]
+def calculate_active_cases(cases, deaths, recoveries):
+    return [c - d - r for (c, d, r) in zip(cases, deaths, recoveries)]
 
-            if typ == "cases":
-                cases = data
-            if typ == "deaths":
-                deaths = data
-            if typ == "recoveries":
-                recoveries = data
-    return (int(cases), int(deaths), int(recoveries))
+def plot(values, dates):
+    plt.plot(values)
+    plt.savefig("graph.png")
 
+def create_message(values):
+    newest_value = values[-1]
+    return "Today there are {} active cases of confirmed COVID-19 cases in Germany.".format(newest_value)
 
-data = get_data()
+def main():
+    download_data()
 
-active_cases = data[0] - data[1] - data[2]
+    (cases, deaths, recoveries, dates) = get_data()
+    current_date = dates.tail(1).item()
+    values = calculate_active_cases(cases, deaths, recoveries)
 
-message = "Today there are {} active cases of confirmed COVID-19 cases in Germany.".format(active_cases)
-send_message(message)
+    send_message("Cases for {}".format(current_date))
+    message = create_message(values)
+    send_message(message)
+
+    plot(values, dates)
+    send_graph()
+
+if __name__ == '__main__':
+    main()
