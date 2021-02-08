@@ -71,6 +71,7 @@ def calculate_active_cases(cases, deaths, recoveries):
 def plot(values, dates):
     plt.plot_date(pd.to_datetime(dates), values, '-')
     plt.gcf().autofmt_xdate()
+    plt.gca().grid()
     plt.savefig("graph.png")
 
 def create_message(values):
