@@ -74,7 +74,8 @@ def get_data():
             recoveries = values
         if len(dates) < len(file_dates):
             dates = file_dates
-    return (cases, deaths, recoveries, dates)
+    ml = min(len(cases), len(deaths), len(recoveries), len(dates))
+    return (cases[:ml], deaths[:ml], recoveries[:ml], dates[:ml])
 
 def calculate_active_cases(cases, deaths, recoveries):
     return [c - d - r for (c, d, r) in zip(cases, deaths, recoveries)]
