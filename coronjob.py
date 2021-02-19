@@ -4,6 +4,8 @@
 import csv
 import matplotlib.pyplot as plt
 import pandas as pd
+import datetime
+import dateutil
 
 # Telegram
 import requests
@@ -88,7 +90,19 @@ def create_and_save_plot(values, dates):
 
 def create_message_text(current_date, values):
     newest_value = values[-1]
-    return f"Cases for {current_date}:\nToday there are {newest_value} active cases of confirmed COVID-19 cases in Germany."
+    datetime_date = dateutil.parser.parse(current_date).date()
+    today = datetime.date.today()
+    yesterday = today - datetime.timedelta(days=1)
+    last_week = today - datetime.timedelta(days=7)
+    if datetime_date == today:
+        text_chunk = "Today there are"
+    elif datetime_date == yesterday:
+        text_chunk = "Yesterday there were"
+    elif datetime_date > last_week:
+        text_chunk = "A few days ago there were"
+    else:
+        text_chunk = "Once upon a time there were"
+    return f"Cases for {current_date}:\n{text_chunk} {newest_value} active cases of confirmed COVID-19 cases in Germany."
 
 def main():
     download_data()
