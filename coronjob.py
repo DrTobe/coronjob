@@ -9,8 +9,8 @@ import dateutil
 
 # Telegram
 import requests
-from telegram_token import telegram_bot_token
-from telegram_token import telegram_channel_id
+#from telegram_token import telegram_bot_token
+#from telegram_token import telegram_channel_id
 
 # Signal
 import subprocess
@@ -82,10 +82,19 @@ def get_data():
 def calculate_active_cases(cases, deaths, recoveries):
     return [c - d - r for (c, d, r) in zip(cases, deaths, recoveries)]
 
-def create_and_save_plot(values, dates):
-    plt.plot_date(pd.to_datetime(dates), values, '-')
+def calculate_7_days_incidence(cases):
+    raw_increases = [cases[i] - (cases[i-7] if i>=7 else 0) for i in range(len(cases))]
+    return [x/82e6*1e5 for x in raw_increases]
+
+def create_and_save_plot(dates, values, incidences):
+    plt.plot_date(pd.to_datetime(dates), values, 'b-')
+    plt.plot_date(pd.to_datetime(dates[0]), 0, 'r-')
     plt.gcf().autofmt_xdate()
     plt.gca().grid()
+    plt.legend(['active cases','7-day incidence'], loc="upper left")
+    ax2 = plt.gca().twinx()
+    ax2.plot_date(pd.to_datetime(dates), incidences, 'r-')
+    ax2.hlines(y=[35,50], xmin=pd.to_datetime(dates[0]), xmax=pd.to_datetime(dates[::-1]),colors=['green', 'darkorange'], linestyles='--', lw=2)
     plt.savefig("graph.png")
 
 def create_message_text(current_date, values):
@@ -110,9 +119,12 @@ def main():
     (cases, deaths, recoveries, dates) = get_data()
     current_date = dates.tail(1).item()
     values = calculate_active_cases(cases, deaths, recoveries)
+    incidences = calculate_7_days_incidence(cases)
+
+
 
     message_text = create_message_text(current_date, values)
-    create_and_save_plot(values, dates)
+    create_and_save_plot(dates, values, incidences)
     #send_graph_telegram(message_text)
     send_graph_signal(message_text)
 
