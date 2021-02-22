@@ -94,7 +94,7 @@ def create_and_save_plot(dates, values, incidences):
     plt.legend(['active cases','7-day incidence'], loc="upper left")
     ax2 = plt.gca().twinx()
     ax2.plot_date(pd.to_datetime(dates), incidences, 'r-')
-    ax2.hlines(y=[35,50], xmin=pd.to_datetime(dates[0]), xmax=pd.to_datetime(dates[::-1]),colors=['green', 'darkorange'], linestyles='--', lw=2)
+    ax2.hlines(y=[35,50], xmin=pd.to_datetime(dates[0]), xmax=pd.to_datetime(list(dates)[-1]),colors=['green', 'darkorange'], linestyles='--', lw=2)
     plt.savefig("graph.png")
 
 def create_message_text(current_date, values):
