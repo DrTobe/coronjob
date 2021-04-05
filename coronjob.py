@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import datetime
 import dateutil
+import math
 
 # Telegram
 import requests
@@ -86,16 +87,57 @@ def calculate_7_days_incidence(cases):
     raw_increases = [cases[i] - (cases[i-7] if i>=7 else 0) for i in range(len(cases))]
     return [x/82e6*1e5 for x in raw_increases]
 
+def get_visible_yticks(axes, max_value):
+    yticks = []
+    for ytick in axes.get_yticks():
+        if ytick >= 0:
+            yticks.append(ytick)
+        if ytick > max_value:
+            break
+    return yticks
+
+def ceil_to_decimal_power(val):
+    return 10**math.ceil(math.log10(val))
+
+# Ceils to: factor * (10 ^ x)
+# Examples: 250000 (factor 2.5), 200 (factor 2), etc.
+def ceil_to_factored_decimal_power(factor, val):
+    if factor < 1 or factor >= 10:
+        raise("The factor should be in [0, 10)")
+    return factor * ceil_to_decimal_power(val / factor)
+
+def determine_best_ytick_stepsize(max_value, steps):
+    naive_stepsize = max_value / steps
+    stepsizes = []
+    for factor in [1, 2, 2.5, 4, 5]:
+        stepsizes.append(ceil_to_factored_decimal_power(factor, naive_stepsize))
+    return min(stepsizes)
+
+def determine_yticks(max_value, num_yticks):
+    steps = num_yticks - 1
+    stepsize = determine_best_ytick_stepsize(max_value, steps)
+    return [x*stepsize for x in range(num_yticks)]
+
+def set_ylim_from_yticks(axes, yticks):
+    stepsize = yticks[1]
+    axes.set_ylim([-0.4*stepsize, yticks[-1]])
+
 def create_and_save_plot(dates, values, incidences):
     plt.plot_date(pd.to_datetime(dates), values, 'b-')
-    plt.plot_date(pd.to_datetime(dates[0]), 0, 'r-')
+    plt.plot_date(pd.to_datetime(dates[0]), 0, 'r-') # dummy plot for legend
     plt.gcf().autofmt_xdate()
     plt.gca().grid()
+    ax1_yticks = get_visible_yticks(plt.gca(), max(values))
+    set_ylim_from_yticks(plt.gca(), ax1_yticks)
     plt.legend(['active cases','7-day incidence'], loc="upper left")
     ax2 = plt.gca().twinx()
     ax2.plot_date(pd.to_datetime(dates), incidences, 'r-')
     ax2.hlines(y=[35,50], xmin=pd.to_datetime(dates[0]), xmax=pd.to_datetime(list(dates)[-1]),colors=['green', 'darkorange'], linestyles='--', lw=2)
+    ax2_yticks = determine_yticks(max(incidences), len(ax1_yticks))
+    ax2.set_yticks(ax2_yticks)
+    set_ylim_from_yticks(ax2, ax2_yticks)
     plt.savefig("graph.png")
+    #plt.show()
 
 def create_message_text(current_date, values):
     newest_value = values[-1]
@@ -120,8 +162,6 @@ def main():
     current_date = dates.tail(1).item()
     values = calculate_active_cases(cases, deaths, recoveries)
     incidences = calculate_7_days_incidence(cases)
-
-
 
     message_text = create_message_text(current_date, values)
     create_and_save_plot(dates, values, incidences)
