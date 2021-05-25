@@ -85,7 +85,7 @@ def get_data_kriesel():
         if len(dates) < len(file_dates):
             dates = file_dates
     ml = min(len(cases), len(deaths), len(recoveries), len(dates))
-    return (cases[:ml], deaths[:ml], recoveries[:ml], dates[:ml])
+    return (cases[:ml], deaths[:ml], recoveries[:ml], pd.to_datetime(dates[:ml]))
 
 def calculate_active_cases(cases, deaths, recoveries):
     return [c - d - r for (c, d, r) in zip(cases, deaths, recoveries)]
@@ -98,18 +98,18 @@ def get_data_dortmund():
     filename = "corona-dortmund.csv"
     cols = ["Datum", "7-Tage-Inzidenzwert (nach Richtlinien RKI pro 100.000 Einwohner_innen)"]
     df = pd.read_csv(filename, delimiter=";", encoding="utf-8", usecols=cols)
-    dates = df["Datum"]
+    dates = pd.to_datetime(df["Datum"], format="%d.%m.%Y")
     values = df["7-Tage-Inzidenzwert (nach Richtlinien RKI pro 100.000 Einwohner_innen)"]
     values = values.apply(lambda x: float(x.replace(",", ".")))
-    return (dates, values)
+    return (dates, list(values))
 
 def get_data_gelsenkirchen():
     filename = "corona-gelsenkirchen.csv"
     df = pd.read_csv(filename, delimiter=",", encoding="utf-8")
     df = df[(df.kreis==5513)]
-    dates = df.datum
+    dates = pd.to_datetime(df.datum, format="%d.%m.%Y")
     values = df.rateM7Tage
-    return (dates, values)
+    return (dates, list(values))
 
 def get_visible_yticks(axes, max_value):
     yticks = []
@@ -147,52 +147,64 @@ def set_ylim_from_yticks(axes, yticks):
     axes.set_ylim([-0.4*stepsize, yticks[-1]])
 
 def create_and_save_plot(dates, values, incidences, dates_dortmund, incidences_dortmund, dates_gelsenkirchen, incidences_gelsenkirchen):
-    plt.plot_date(pd.to_datetime(dates_gelsenkirchen, format="%d.%m.%Y"), incidences_gelsenkirchen, 'b-')
+    plt.plot_date(dates, values, 'k-')
     plt.plot_date(pd.to_datetime(dates[0]), 0, 'r-') # dummy plot for legend
     plt.plot_date(pd.to_datetime(dates[0]), 0, 'y-') # dummy plot for legend
+    plt.plot_date(pd.to_datetime(dates[0]), 0, 'b-') # dummy plot for legend
     plt.gcf().autofmt_xdate()
     plt.gca().grid()
     ax1_yticks = get_visible_yticks(plt.gca(), max(values))
     set_ylim_from_yticks(plt.gca(), ax1_yticks)
-    plt.legend(['7-day incidence Gelsenkirchen','7-day incidence', '7-day incidence Dortmund'], loc="upper left")
+    plt.legend(['Active Cases','7-day incidence', '7-day incidence Dortmund', '7-day incidence Gelsenkirchen'], loc="upper left")
     ax2 = plt.gca().twinx()
-    ax2.plot_date(pd.to_datetime(dates), incidences, 'r-')
-    ax2.plot_date(pd.to_datetime(dates_dortmund, format="%d.%m.%Y"), incidences_dortmund, "y-")
-    ax2.hlines(y=[100], xmin=pd.to_datetime(dates[0]), xmax=pd.to_datetime(list(dates)[-1]),colors=['green'], linestyles='--', lw=2)
+    plt.plot_date(dates, incidences, 'r-')
+    ax2.plot_date(dates_dortmund, incidences_dortmund, "y-")
+    ax2.plot_date(dates_gelsenkirchen, incidences_gelsenkirchen, 'b-')
+    ax2.hlines(y=[100], xmin=dates[0], xmax=list(dates)[-1],colors=['green'], linestyles='--', lw=2)
     ax2_yticks = determine_yticks(max(incidences), len(ax1_yticks))
     ax2.set_yticks(ax2_yticks)
     set_ylim_from_yticks(ax2, ax2_yticks)
     plt.savefig("graph.png")
     #plt.show()
 
-def create_message_text(current_date, values):
-    newest_value = values[-1]
-    datetime_date = dateutil.parser.parse(current_date).date()
+def create_message_text(dates_kriesel, values_kriesel, incidences_kriesel, dates_dortmund, incidences_dortmund, dates_gelsenkirchen, incidences_gelsenkirchen):
+    day_kriesel = relative_day(dates_kriesel.tail(1).item())
+    day_dortmund = relative_day(dates_dortmund.tail(1).item())
+    day_gelsenkirchen = relative_day(dates_gelsenkirchen.tail(1).item())
+    return (f"Today is {datetime.date.today()}:\n"
+            f"Active Cases Germany ({day_kriesel}): {values_kriesel[-1]}\n"
+            f"Incidences Germany ({day_kriesel}): {round(incidences_kriesel[-1])}\n"
+            f"Incidences Dortmund ({day_dortmund}): {round(incidences_dortmund[-1])}\n"
+            f"Incidences Gelsenkirchen ({day_gelsenkirchen}): {round(incidences_gelsenkirchen[-1])}")
+
+def relative_day(date):
     today = datetime.date.today()
     yesterday = today - datetime.timedelta(days=1)
+    day_before_y = today - datetime.timedelta(days=2)
     last_week = today - datetime.timedelta(days=7)
-    if datetime_date == today:
-        text_chunk = "Today there are"
-    elif datetime_date == yesterday:
-        text_chunk = "Yesterday there were"
-    elif datetime_date > last_week:
-        text_chunk = "A few days ago there were"
+    if date == today:
+        return "today"
+    elif date == yesterday:
+        return "yesterday"
+    elif date == day_before_y:
+        return "two days ago"
+    elif date > last_week:
+        return "a few days ago"
     else:
-        text_chunk = "Once upon a time there were"
-    return f"Cases for {current_date}:\n{text_chunk} {newest_value} active cases of confirmed COVID-19 cases in Germany."
+        return "once upon a time"
 
 def main():
     download_data()
 
-    (cases, deaths, recoveries, dates) = get_data_kriesel()
+    (cases, deaths, recoveries, dates_kriesel) = get_data_kriesel()
+    values_kriesel = calculate_active_cases(cases, deaths, recoveries)
+    incidences_kriesel = calculate_7_days_incidence(cases)
     (dates_dortmund, incidences_dortmund) = get_data_dortmund()
     (dates_gelsenkirchen, incidences_gelsenkirchen) = get_data_gelsenkirchen()
-    current_date = dates.tail(1).item()
-    values = calculate_active_cases(cases, deaths, recoveries)
-    incidences = calculate_7_days_incidence(cases)
 
-    message_text = create_message_text(current_date, values)
-    create_and_save_plot(dates, values, incidences, dates_dortmund, incidences_dortmund, dates_gelsenkirchen, incidences_gelsenkirchen)
+    message_text = create_message_text(dates_kriesel, values_kriesel, incidences_kriesel, dates_dortmund, incidences_dortmund, dates_gelsenkirchen, incidences_gelsenkirchen)
+    create_and_save_plot(dates_kriesel, values_kriesel, incidences_kriesel, dates_dortmund, incidences_dortmund, dates_gelsenkirchen, incidences_gelsenkirchen)
+
     #send_graph_telegram(message_text)
     send_graph_signal(message_text)
 
