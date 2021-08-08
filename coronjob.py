@@ -60,8 +60,10 @@ def download_data():
     for filename in get_filenames():
         url = f"http://www.dkriesel.com/_media/{filename}"
         download_url_to_file(url, filename)
-    url = "https://rathaus.dortmund.de/statData/shiny/FB53-Coronafallzahlen.csv"
-    download_url_to_file(url, "corona-dortmund.csv")
+    url_do = "https://rathaus.dortmund.de/statData/shiny/FB53-Coronafallzahlen.csv"
+    download_url_to_file(url_do, "corona-dortmund.csv")
+    url_ge = "https://www.lzg.nrw.de/covid19/daten/covid19_zeitreihe_5513.csv"
+    download_url_to_file(url_ge, "corona-gelsenkirchen.csv")
 
 def get_data_kriesel():
     cases = []
@@ -101,6 +103,14 @@ def get_data_dortmund():
     values = values.apply(lambda x: float(x.replace(",", ".")))
     return (dates, values)
 
+def get_data_gelsenkirchen():
+    filename = "corona-gelsenkirchen.csv"
+    df = pd.read_csv(filename, delimiter=",", encoding="utf-8")
+    df = df[(df.kreis==5513)]
+    dates = df.datum
+    values = df.rateM7Tage
+    return (dates, values)
+
 def get_visible_yticks(axes, max_value):
     yticks = []
     for ytick in axes.get_yticks():
@@ -136,15 +146,15 @@ def set_ylim_from_yticks(axes, yticks):
     stepsize = yticks[1]
     axes.set_ylim([-0.4*stepsize, yticks[-1]])
 
-def create_and_save_plot(dates, values, incidences, dates_dortmund, incidences_dortmund):
-    plt.plot_date(pd.to_datetime(dates), values, 'b-')
+def create_and_save_plot(dates, values, incidences, dates_dortmund, incidences_dortmund, dates_gelsenkirchen, incidences_gelsenkirchen):
+    plt.plot_date(pd.to_datetime(dates_gelsenkirchen, format="%d.%m.%Y"), incidences_gelsenkirchen, 'b-')
     plt.plot_date(pd.to_datetime(dates[0]), 0, 'r-') # dummy plot for legend
     plt.plot_date(pd.to_datetime(dates[0]), 0, 'y-') # dummy plot for legend
     plt.gcf().autofmt_xdate()
     plt.gca().grid()
     ax1_yticks = get_visible_yticks(plt.gca(), max(values))
     set_ylim_from_yticks(plt.gca(), ax1_yticks)
-    plt.legend(['active cases','7-day incidence', '7-day incidence Dortmund'], loc="upper left")
+    plt.legend(['7-day incidence Gelsenkirchen','7-day incidence', '7-day incidence Dortmund'], loc="upper left")
     ax2 = plt.gca().twinx()
     ax2.plot_date(pd.to_datetime(dates), incidences, 'r-')
     ax2.plot_date(pd.to_datetime(dates_dortmund, format="%d.%m.%Y"), incidences_dortmund, "y-")
@@ -176,12 +186,13 @@ def main():
 
     (cases, deaths, recoveries, dates) = get_data_kriesel()
     (dates_dortmund, incidences_dortmund) = get_data_dortmund()
+    (dates_gelsenkirchen, incidences_gelsenkirchen) = get_data_gelsenkirchen()
     current_date = dates.tail(1).item()
     values = calculate_active_cases(cases, deaths, recoveries)
     incidences = calculate_7_days_incidence(cases)
 
     message_text = create_message_text(current_date, values)
-    create_and_save_plot(dates, values, incidences, dates_dortmund, incidences_dortmund)
+    create_and_save_plot(dates, values, incidences, dates_dortmund, incidences_dortmund, dates_gelsenkirchen, incidences_gelsenkirchen)
     #send_graph_telegram(message_text)
     send_graph_signal(message_text)
 
