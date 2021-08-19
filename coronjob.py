@@ -160,7 +160,7 @@ def create_and_save_plot(dates, values, incidences, dates_dortmund, incidences_d
     plt.plot_date(dates, incidences, 'r-')
     ax2.plot_date(dates_dortmund, incidences_dortmund, "y-")
     ax2.plot_date(dates_gelsenkirchen, incidences_gelsenkirchen, 'b-')
-    ax2.hlines(y=[100], xmin=dates[0], xmax=list(dates)[-1],colors=['green'], linestyles='--', lw=2)
+    ax2.hlines(y=[35], xmin=dates[0], xmax=list(dates)[-1],colors=['green'], linestyles='--', lw=2)
     ax2_yticks = determine_yticks(max(incidences), len(ax1_yticks))
     ax2.set_yticks(ax2_yticks)
     set_ylim_from_yticks(ax2, ax2_yticks)
