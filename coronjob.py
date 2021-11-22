@@ -159,7 +159,8 @@ def create_and_save_plot(dates, values, incidences, dates_dortmund, incidences_d
     ax2 = plt.gca().twinx()
     plt.plot_date(dates, incidences, 'r-')
     ax2.plot_date(dates_dortmund, incidences_dortmund, "y-")
-    ax2.plot_date(dates_gelsenkirchen, incidences_gelsenkirchen, 'b-')
+    # TODO Gelsenkirchen broken
+    #ax2.plot_date(dates_gelsenkirchen, incidences_gelsenkirchen, 'b-')
     ax2.hlines(y=[35], xmin=dates[0], xmax=list(dates)[-1],colors=['green'], linestyles='--', lw=2)
     ax2_yticks = determine_yticks(max(incidences), len(ax1_yticks))
     ax2.set_yticks(ax2_yticks)
@@ -170,12 +171,15 @@ def create_and_save_plot(dates, values, incidences, dates_dortmund, incidences_d
 def create_message_text(dates_kriesel, values_kriesel, incidences_kriesel, dates_dortmund, incidences_dortmund, dates_gelsenkirchen, incidences_gelsenkirchen):
     day_kriesel = relative_day(dates_kriesel.tail(1).item())
     day_dortmund = relative_day(dates_dortmund.tail(1).item())
-    day_gelsenkirchen = relative_day(dates_gelsenkirchen.tail(1).item())
+    # TODO gelsenkirchen broken
+    #day_gelsenkirchen = relative_day(dates_gelsenkirchen.tail(1).item())
     return (f"Today is {datetime.date.today()}:\n"
             f"Active Cases Germany ({day_kriesel}): {values_kriesel[-1]}\n"
             f"Incidences Germany ({day_kriesel}): {round(incidences_kriesel[-1])}\n"
             f"Incidences Dortmund ({day_dortmund}): {round(incidences_dortmund[-1])}\n"
-            f"Incidences Gelsenkirchen ({day_gelsenkirchen}): {round(incidences_gelsenkirchen[-1])}")
+            f"Gelsenkirchen deactivated"
+            #f"Incidences Gelsenkirchen ({day_gelsenkirchen}): {round(incidences_gelsenkirchen[-1])}"
+            )
 
 def relative_day(date):
     today = datetime.date.today()
@@ -200,7 +204,9 @@ def main():
     values_kriesel = calculate_active_cases(cases, deaths, recoveries)
     incidences_kriesel = calculate_7_days_incidence(cases)
     (dates_dortmund, incidences_dortmund) = get_data_dortmund()
-    (dates_gelsenkirchen, incidences_gelsenkirchen) = get_data_gelsenkirchen()
+    # TODO Gelsenkirchen broken
+    #(dates_gelsenkirchen, incidences_gelsenkirchen) = get_data_gelsenkirchen()
+    (dates_gelsenkirchen, incidences_gelsenkirchen) = ([], [])
 
     message_text = create_message_text(dates_kriesel, values_kriesel, incidences_kriesel, dates_dortmund, incidences_dortmund, dates_gelsenkirchen, incidences_gelsenkirchen)
     create_and_save_plot(dates_kriesel, values_kriesel, incidences_kriesel, dates_dortmund, incidences_dortmund, dates_gelsenkirchen, incidences_gelsenkirchen)
