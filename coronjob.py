@@ -179,18 +179,18 @@ def create_message_text(dates_kriesel, values_kriesel, incidences_kriesel, dates
             f"Incidences Gelsenkirchen ({day_gelsenkirchen}): {round(incidences_gelsenkirchen[-1])}"
             )
 
-def relative_day(date):
+def relative_day(pd_timestamp):
     today = datetime.date.today()
     yesterday = today - datetime.timedelta(days=1)
     day_before_y = today - datetime.timedelta(days=2)
     last_week = today - datetime.timedelta(days=7)
-    if date == today:
+    if pd_timestamp.date() == today:
         return "today"
-    elif date == yesterday:
+    elif pd_timestamp.date() == yesterday:
         return "yesterday"
-    elif date == day_before_y:
+    elif pd_timestamp.date() == day_before_y:
         return "two days ago"
-    elif date > last_week:
+    elif pd_timestamp.date() > last_week:
         return "a few days ago"
     else:
         return "once upon a time"
