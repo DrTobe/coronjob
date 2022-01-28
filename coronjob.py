@@ -100,7 +100,8 @@ def get_data_dortmund():
     df = pd.read_csv(filename, delimiter=";", encoding="utf-8", usecols=cols)
     dates = pd.to_datetime(df["Datum"], format="%d.%m.%Y")
     values = df["7-Tage-Inzidenzwert (nach Richtlinien RKI pro 100.000 Einwohner_innen)"]
-    values = values.apply(lambda x: float(x.replace(",", ".")))
+    # Before, the dataframe has been text, now it is float already?
+    #values = values.apply(lambda x: float(x.replace(",", ".")))
     return (dates, list(values))
 
 def get_data_gelsenkirchen():
